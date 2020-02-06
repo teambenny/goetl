@@ -2,7 +2,7 @@
 
 This package was forked from the [dailyburn/ratchet](https://github.com/dailyburn/ratchet). When I left my job at Daily Burn, I was removed as a maintainer on the Ratchet project. Unfortunately it seems like that project is no longer being maintained, but I was still using the original code whenever I could.
 
-goetl starts off with the `release/v3.0.0` tag from the Daily Burn repo, and also implements the [payload abstraction request](https://github.com/dailyburn/ratchet/issues/24). It stands on the original work of @stephenb
+goetl starts off with the `release/v3.0.0` tag from the Daily Burn repo, and also implements the [payload abstraction request](https://github.com/dailyburn/ratchet/issues/24). It stands on the original work of @stephenb who put together the original Ratchet implementation in a week. Thanks, Stephen.
 
 ### A library for performing data pipeline / ETL tasks in Go.
 
@@ -22,7 +22,7 @@ Each data processor is receiving, processing, and then sending data to the next 
       go get github.com/teambenny/goetl
 
 While not necessary, it may be helpful to understand
-some of the pipeline concepts used within Ratchet's internals: https://blog.golang.org/pipelines
+some of the pipeline concepts used within goetl's internals: https://blog.golang.org/pipelines
 
 ## Why would I use this?
 
