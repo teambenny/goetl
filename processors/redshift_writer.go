@@ -149,7 +149,9 @@ func (r *RedshiftWriter) copyQuery() string {
                 REGION '%v'
                 %v
                 MANIFEST
-                JSON 'auto'
+				JSON 'auto'
+				COMPUPDATE OFF
+				STATUPDATE OFF
                 %v
         `, r.tableName, r.bucket, r.manifestPath, *r.config.Region, credentials, compression)
 
