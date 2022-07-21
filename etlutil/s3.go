@@ -11,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/teambenny/goetl/etldata"
 	"github.com/teambenny/goetl/logger"
 )
 
@@ -20,9 +19,9 @@ func S3Prefix(table string) string {
 	now := time.Now()
 	return fmt.Sprintf(
 		"%v/%v/%v-%v/",
-		now.Format(etldata.DateLayout),
+		now.Format(DateLayout),
 		table,
-		now.Format(etldata.TimeLayout),
+		now.Format(TimeLayout),
 		UUID(),
 	)
 }
