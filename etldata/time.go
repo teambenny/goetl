@@ -10,6 +10,7 @@ import (
 const (
 	DefaultTimeLayout = "2006-01-02 15:04:05"
 	DateLayout        = "2006-01-02"
+	TimeLayout        = "15:04:05"
 	FullDateLayout    = "January 2, 2006"
 	ShortDateLayout   = "Jan 2, 2006"
 

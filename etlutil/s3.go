@@ -5,13 +5,27 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/teambenny/goetl/etldata"
 	"github.com/teambenny/goetl/logger"
 )
+
+// S3Prefix generates a unique prefix.
+func S3Prefix(table string) string {
+	now := time.Now()
+	return fmt.Sprintf(
+		"%v/%v/%v-%v/",
+		now.Format(etldata.DateLayout),
+		table,
+		now.Format(etldata.TimeLayout),
+		UUID(),
+	)
+}
 
 // ListS3Objects returns all object keys matching the given prefix. Note that
 // delimiter is set to "/". See http://docs.aws.amazon.com/AmazonS3/latest/dev/ListingKeysHierarchy.html
