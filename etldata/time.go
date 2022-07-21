@@ -14,7 +14,17 @@ type SQLTime struct {
 	time.Time
 }
 
+func (t *SQLTime) IsZero() bool {
+	if t == nil {
+		return true
+	}
+	return t.Time.IsZero()
+}
+
 func (t *SQLTime) UnmarshalJSON(d []byte) (err error) {
+	if string(d) == "" {
+		return
+	}
 	t.Time, err = t.unmarshalJSON(d, sqlLayout1)
 	if err != nil {
 		t.Time, err = t.unmarshalJSON(d, sqlLayout2)
