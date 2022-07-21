@@ -17,12 +17,14 @@ import (
 // S3Prefix generates a unique prefix.
 func S3Prefix(table string) string {
 	now := time.Now()
+	id, _ := UUID()
+
 	return fmt.Sprintf(
 		"%v/%v/%v-%v/",
 		now.Format(DateLayout),
 		table,
 		now.Format(TimeLayout),
-		UUID(),
+		id,
 	)
 }
 
