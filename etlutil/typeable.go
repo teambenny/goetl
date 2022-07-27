@@ -2,9 +2,14 @@ package etlutil
 
 import "github.com/teambenny/goetl/etldata"
 
+// TypeableColumnName is exposed as a constant to prevent fat fingering.
+const (
+	TypeableColumnName = "goetl_data_type"
+)
+
 // Typeable looks at the type attribute.
 type Typeable struct {
-	Type string `json:"type"`
+	Type string `json:"goetl_data_type"`
 }
 
 // Typecheck returns the value of the Typeable.Type.
