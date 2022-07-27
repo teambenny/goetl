@@ -104,7 +104,8 @@ func TruncateMerge(tx *sql.Tx, targetTable, tempTable string) error {
 		return nil
 	}
 
-	truncateQuery := fmt.Sprintf("TRUNCATE TABLE %v", targetTable)
+	// We use "DELETE FROM" because "TRUNCATE TABLE" automatically commits
+	truncateQuery := fmt.Sprintf("DELETE FROM %v", targetTable)
 	if _, err := tx.Exec(truncateQuery); err != nil {
 		return err
 	}
