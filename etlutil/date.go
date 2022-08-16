@@ -64,14 +64,21 @@ func QuarterToDate() (startDate, endDate string) {
 	return
 }
 
-// MonthDateRange takes a month (in monthLayout) and returns the
-// first and last day of that month (in DateLayout).
-func MonthDateRange(month string) (startDate, endDate string) {
+// MonthToTime takes a month (in monthLayout) and returns the
+// time object of its first day.
+func MonthToTime(month string) time.Time {
 	startTime, err := time.Parse(DateLayout, fmt.Sprintf("%v-01", month))
 	if err != nil {
 		panic(err.Error())
 	}
 
+	return startTime
+}
+
+// MonthDateRange takes a month (in monthLayout) and returns the
+// first and last day of that month (in DateLayout).
+func MonthDateRange(month string) (startDate, endDate string) {
+	startTime := MonthToTime(month)
 	endTime := startTime.AddDate(0, 1, 0).AddDate(0, 0, -1)
 
 	startDate = startTime.Format(DateLayout)
@@ -83,11 +90,7 @@ func MonthDateRange(month string) (startDate, endDate string) {
 // DaysInMonth takes a month (in monthLayout) and returns how many days
 // are in that month.
 func DaysInMonth(month string) int {
-	startTime, err := time.Parse(DateLayout, fmt.Sprintf("%v-01", month))
-	if err != nil {
-		panic(err.Error())
-	}
-
+	startTime := MonthToTime(month)
 	endTime := startTime.AddDate(0, 1, 0).AddDate(0, 0, -1)
 	return endTime.Day()
 }
