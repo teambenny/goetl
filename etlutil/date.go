@@ -75,6 +75,15 @@ func MonthToTime(month string) time.Time {
 	return startTime
 }
 
+func MonthToTimeInLocation(month string, loc *time.Location) time.Time {
+	startTime, err := time.ParseInLocation(DateLayout, fmt.Sprintf("%v-01", month), loc)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	return startTime
+}
+
 // MonthDateRange takes a month (in monthLayout) and returns the
 // first and last day of that month (in DateLayout).
 func MonthDateRange(month string) (startDate, endDate string) {
