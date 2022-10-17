@@ -2,6 +2,7 @@ package etldata
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -27,6 +28,11 @@ func (t *SQLTime) IsZero() bool {
 
 func (t *SQLTime) UnmarshalJSON(d []byte) (err error) {
 	if string(d) == "" {
+		return
+	}
+	// Try parsing as a Unix timestamp
+	if unixTime, unixErr := strconv.Atoi(string(d)); unixErr == nil {
+		t.Time = time.Unix(int64(unixTime), 0)
 		return
 	}
 	t.Time, err = t.unmarshalJSON(d, sqlLayout1)
