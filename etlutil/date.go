@@ -111,6 +111,13 @@ func BeginningOfDay(t time.Time) time.Time {
 	return time.Date(year, month, day, 0, 0, 0, 0, t.Location())
 }
 
+// BeginningOfMonth returns the time (in any location) of
+// the start of that location's month.
+func BeginningOfMonth(t time.Time) time.Time {
+	year, month, _ := t.Date()
+	return time.Date(year, month, 1, 0, 0, 0, 0, t.Location())
+}
+
 // DaysBetween calculates how many days pass between two time objects.
 func DaysBetween(start, finish time.Time) int {
 	diff := BeginningOfDay(finish).Sub(BeginningOfDay(start))
