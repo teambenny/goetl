@@ -104,18 +104,32 @@ func TruncateMerge(tx *sql.Tx, targetTable, tempTable string) error {
 		return nil
 	}
 
-	// We use "DELETE FROM" because "TRUNCATE TABLE" automatically commits
-	truncateQuery := fmt.Sprintf("DELETE FROM %v", targetTable)
-	if _, err := tx.Exec(truncateQuery); err != nil {
+	id, err := UUID()
+	if err != nil {
 		return err
 	}
 
-	insertQuery := fmt.Sprintf("INSERT INTO %v SELECT DISTINCT * FROM %v", targetTable, tempTable)
-	if _, err := tx.Exec(insertQuery); err != nil {
+	holdingTable := strings.ReplaceAll(fmt.Sprintf("%v_%v", targetTable, id), "-", "_")
+	q := fmt.Sprintf("CREATE TABLE %v (LIKE %v INCLUDING DEFAULTS)", holdingTable, targetTable)
+	err = ExecuteSQLQueryTx(tx, q)
+	if err != nil {
 		return err
 	}
 
-	return nil
+	insertQuery := fmt.Sprintf("INSERT INTO %v SELECT DISTINCT * FROM %v", holdingTable, tempTable)
+	err = ExecuteSQLQueryTx(tx, insertQuery)
+	if err != nil {
+		return err
+	}
+
+	err = ExecuteSQLQueryTx(tx, fmt.Sprintf("DROP TABLE %v", targetTable))
+	if err != nil {
+		return err
+	}
+
+	targetTableNames := strings.Split(targetTable, ".")
+	targetTableName := targetTableNames[len(targetTableNames)-1]
+	return ExecuteSQLQueryTx(tx, fmt.Sprintf("ALTER TABLE %v RENAME TO %v", holdingTable, targetTableName))
 }
 
 // PurgeMerge clears out the targetTable based on the conditional, and then writes
