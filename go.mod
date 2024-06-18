@@ -1,4 +1,4 @@
-module github.com/teambenny/goetl
+module github.com/will-beep-lamm/goetl
 
 go 1.14
 
