@@ -3,8 +3,8 @@ package processors
 import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/teambenny/goetl/etldata"
-	"github.com/teambenny/goetl/etlutil"
+	"github.com/will-beep-lamm/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etlutil"
 )
 
 // S3Writer sends data upstream to S3. By default, we will not compress data before sending it.

@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/teambenny/goetl/etldata"
-	"github.com/teambenny/goetl/etlutil"
+	"github.com/will-beep-lamm/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etlutil"
 )
 
 type redshiftManifest struct {

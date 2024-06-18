@@ -3,7 +3,7 @@ package processors
 import (
 	"database/sql"
 
-	"github.com/teambenny/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etldata"
 )
 
 // SQLReaderPostgreSQLWriter performs both the job of a SQLReader and PostgreSQLWriter.

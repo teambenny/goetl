@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/kisielk/sqlstruct"
-	"github.com/teambenny/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etldata"
 )
 
 // GetDataFromSQLQuery is a util function that, given a properly intialized sql.DB

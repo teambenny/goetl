@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/teambenny/goetl/etldata"
-	"github.com/teambenny/goetl/etlutil"
+	"github.com/will-beep-lamm/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etlutil"
 )
 
 // SCP executes the scp command, sending the given file to the given destination.

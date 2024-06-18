@@ -1,6 +1,6 @@
 package etlutil
 
-import "github.com/teambenny/goetl/etldata"
+import "github.com/will-beep-lamm/goetl/etldata"
 
 // TypeableColumnName is exposed as a constant to prevent fat fingering.
 const (

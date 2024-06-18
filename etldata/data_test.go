@@ -3,7 +3,7 @@ package etldata_test
 import (
 	"fmt"
 
-	"github.com/teambenny/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etldata"
 )
 
 type testStruct struct {

@@ -3,8 +3,8 @@ package processors
 import (
 	"io/ioutil"
 
-	"github.com/teambenny/goetl/etldata"
-	"github.com/teambenny/goetl/etlutil"
+	"github.com/will-beep-lamm/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etlutil"
 )
 
 // FileReader opens and reads the contents of the given filename.

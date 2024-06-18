@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/teambenny/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etldata"
 )
 
 // CSVString returns an empty string for nil values to make sure that the

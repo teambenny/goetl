@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/teambenny/goetl/etldata"
-	"github.com/teambenny/goetl/logger"
+	"github.com/will-beep-lamm/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/logger"
 )
 
 // PostgreSQLInsertData abstracts building and executing a SQL INSERT

@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/google/uuid"
-	"github.com/teambenny/goetl/logger"
+	"github.com/will-beep-lamm/goetl/logger"
 )
 
 // S3Prefix generates a unique prefix.

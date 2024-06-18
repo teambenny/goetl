@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/teambenny/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etldata"
 )
 
 // Processor is the interface that should be implemented to perform data-related

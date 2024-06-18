@@ -2,8 +2,8 @@ package processors
 
 import (
 	"github.com/pkg/sftp"
-	"github.com/teambenny/goetl/etldata"
-	"github.com/teambenny/goetl/etlutil"
+	"github.com/will-beep-lamm/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etlutil"
 	"golang.org/x/crypto/ssh"
 )
 

@@ -1,8 +1,8 @@
 package processors
 
 import (
-	"github.com/teambenny/goetl/etldata"
-	"github.com/teambenny/goetl/etlutil"
+	"github.com/will-beep-lamm/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etlutil"
 )
 
 // CSVTransformer converts etldata.Payload objects into a CSV string object

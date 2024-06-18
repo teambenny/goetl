@@ -4,9 +4,9 @@ import (
 	"errors"
 
 	bigquery "github.com/dailyburn/bigquery/client"
-	"github.com/teambenny/goetl/etldata"
-	"github.com/teambenny/goetl/etlutil"
-	"github.com/teambenny/goetl/logger"
+	"github.com/will-beep-lamm/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etlutil"
+	"github.com/will-beep-lamm/goetl/logger"
 )
 
 // BigQueryReader is used to query data from Google's BigQuery,
@@ -21,7 +21,6 @@ import (
 // This involves using a temporary table setting and a couple of other special
 // query settings - read the BigQuery docs related to flatten and repeated
 // fields for more info.
-//
 type BigQueryReader struct {
 	client           *bigquery.Client
 	config           *BigQueryConfig

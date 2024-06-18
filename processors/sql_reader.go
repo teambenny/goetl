@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/teambenny/goetl/etldata"
-	"github.com/teambenny/goetl/etlutil"
-	"github.com/teambenny/goetl/logger"
+	"github.com/will-beep-lamm/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etlutil"
+	"github.com/will-beep-lamm/goetl/logger"
 )
 
 // SQLReader runs the given SQL and passes the resulting data

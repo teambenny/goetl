@@ -2,9 +2,9 @@ package processors
 
 import (
 	bigquery "github.com/dailyburn/bigquery/client"
-	"github.com/teambenny/goetl/etldata"
-	"github.com/teambenny/goetl/etlutil"
-	"github.com/teambenny/goetl/logger"
+	"github.com/will-beep-lamm/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etlutil"
+	"github.com/will-beep-lamm/goetl/logger"
 )
 
 // BigQueryWriter is used to write data to Google's BigQuery. If the table you want to
