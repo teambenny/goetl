@@ -7,9 +7,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/teambenny/goetl/etldata"
-	"github.com/teambenny/goetl/etlutil"
-	"github.com/teambenny/goetl/logger"
+	"github.com/will-beep-lamm/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etlutil"
+	"github.com/will-beep-lamm/goetl/logger"
 )
 
 // S3Reader handles retrieving objects from S3. Use NewS3ObjectReader to read

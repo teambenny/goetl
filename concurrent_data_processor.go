@@ -4,8 +4,8 @@ import (
 	"container/list"
 	"sync"
 
-	"github.com/teambenny/goetl/etldata"
-	"github.com/teambenny/goetl/logger"
+	"github.com/will-beep-lamm/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/logger"
 )
 
 // ConcurrentProcessor is a Processor that also defines

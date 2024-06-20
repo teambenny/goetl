@@ -11,13 +11,14 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/teambenny/goetl/logger"
+	"github.com/google/uuid"
+	"github.com/will-beep-lamm/goetl/logger"
 )
 
 // S3Prefix generates a unique prefix.
 func S3Prefix(table string) string {
 	now := time.Now()
-	id, _ := UUID()
+	id := uuid.NewString()
 
 	return fmt.Sprintf(
 		"%v/%v/%v-%v/",

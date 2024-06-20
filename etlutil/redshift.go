@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // CreateTempTable generates a unique table name and creates schema based
@@ -12,7 +14,7 @@ func CreateTempTable(tx *sql.Tx, likeTable string) (string, error) {
 	if tx == nil || likeTable == "" {
 		return "", nil
 	}
-	id, _ := UUID()
+	id := uuid.NewString()
 
 	tmpTable := fmt.Sprintf("%v_%v",
 		strings.Replace(likeTable, ".", "_", -1),

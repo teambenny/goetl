@@ -1,6 +1,6 @@
 package processors
 
-import "github.com/teambenny/goetl/etldata"
+import "github.com/will-beep-lamm/goetl/etldata"
 
 // FuncTransformer executes the given function on each data
 // payload, sending the resuling data to the next stage.
@@ -13,7 +13,7 @@ type FuncTransformer struct {
 	ConcurrencyLevel int    // See ConcurrentProcessor
 }
 
-//NewFuncTransformer instantiates a new instance of func transformer
+// NewFuncTransformer instantiates a new instance of func transformer
 func NewFuncTransformer(transform func(d etldata.Payload) etldata.Payload) *FuncTransformer {
 	return &FuncTransformer{transform: transform}
 }

@@ -3,9 +3,9 @@ package processors
 import (
 	"regexp"
 
-	"github.com/teambenny/goetl/etldata"
-	"github.com/teambenny/goetl/etlutil"
-	"github.com/teambenny/goetl/logger"
+	"github.com/will-beep-lamm/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etlutil"
+	"github.com/will-beep-lamm/goetl/logger"
 )
 
 // RegexpMatcher checks if incoming data matches the given Regexp, and sends

@@ -3,7 +3,7 @@ package processors
 import (
 	"io"
 
-	"github.com/teambenny/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etldata"
 )
 
 // IoReaderWriter performs both the job of a IoReader and IoWriter.

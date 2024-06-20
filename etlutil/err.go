@@ -1,6 +1,6 @@
 package etlutil
 
-import "github.com/teambenny/goetl/logger"
+import "github.com/will-beep-lamm/goetl/logger"
 
 // KillPipelineIfErr is an error-checking helper.
 func KillPipelineIfErr(err error, killChan chan error) {

@@ -4,9 +4,9 @@ import (
 	"io"
 
 	"github.com/jlaffaye/ftp"
-	"github.com/teambenny/goetl/etldata"
-	"github.com/teambenny/goetl/etlutil"
-	"github.com/teambenny/goetl/logger"
+	"github.com/will-beep-lamm/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etlutil"
+	"github.com/will-beep-lamm/goetl/logger"
 )
 
 // FtpWriter type represents an ftp writter processor

@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/teambenny/goetl/logger"
+	"github.com/will-beep-lamm/goetl/logger"
 )
 
 // JSON is the data type that is passed along all data channels.

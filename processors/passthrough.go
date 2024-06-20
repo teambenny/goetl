@@ -1,6 +1,6 @@
 package processors
 
-import "github.com/teambenny/goetl/etldata"
+import "github.com/will-beep-lamm/goetl/etldata"
 
 // Passthrough simply passes the data on to the next stage.
 // We have to set a placeholder field - if we leave this as an empty struct we get some properties

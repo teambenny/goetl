@@ -3,8 +3,8 @@ package processors
 import (
 	"io"
 
-	"github.com/teambenny/goetl/etldata"
-	"github.com/teambenny/goetl/etlutil"
+	"github.com/will-beep-lamm/goetl/etldata"
+	"github.com/will-beep-lamm/goetl/etlutil"
 )
 
 // CSVWriter is handles converting etldata.JSON objects into CSV format,
