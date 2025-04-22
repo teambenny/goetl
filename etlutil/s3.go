@@ -132,5 +132,13 @@ func WriteS3Object(data []string, config *aws.Config, bucket string, key string,
 		Key:    aws.String(key),
 	})
 
+	if err != nil {
+		return "", err
+	}
+
+	if result == nil {
+		return "", fmt.Errorf("no result returned from S3 upload")
+	}
+
 	return result.Location, err
 }
