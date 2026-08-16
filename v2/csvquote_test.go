@@ -11,8 +11,9 @@ import (
 	goetl "github.com/teambenny/goetl/v2"
 )
 
-// The CSV quoting is hand-rolled rather than delegated to encoding/csv, so it
-// needs its own coverage against RFC 4180.
+// Readable documentation of the quoting rules. The authoritative check is
+// FuzzCSVMatchesStdlib, which asserts byte-for-byte equality with encoding/csv
+// on arbitrary input; these cases exist so the behavior is legible.
 type strSource struct{ vals []string }
 
 func (s *strSource) Read(ctx context.Context, emit goetl.Emit) error {
@@ -34,7 +35,8 @@ func TestCSVQuoting(t *testing.T) {
 		{"has\nnewline", "\"has\nnewline\""},
 		{"has\rcr", "\"has\rcr\""},
 		{" leading", `" leading"`},
-		{"trailing ", `"trailing "`},
+		{`\.`, `"\."`},             // Postgres end-of-data marker
+		{"trailing ", "trailing "}, // stdlib does not quote trailing space
 		{"mid space", "mid space"},
 		{`"`, `""""`},
 	}

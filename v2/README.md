@@ -74,7 +74,21 @@ rows to `encoding/csv`. Rewriting it to append directly into a reusable byte
 buffer took CSV encoding from 242 to 101 ns/row (**2.2x**) and 3 allocations
 per row to 0, which is what moved the end-to-end figure from 7.3x to 13x.
 
-A third-party CSV library would not have helped. Measured per value:
+**Versus the standard library.** `BenchmarkCSVStdlib` is a fair
+`encoding/csv` implementation of the same job — column types resolved once per
+batch, record slice reused across rows — benchmarked head to head against the
+direct writer. Source plus sink, no transform, three runs each:
+
+| Encoder | ns/row | B/row | allocs/row |
+|---|---:|---:|---:|
+| `encoding/csv` | 215.6 | 100 | 3 |
+| **direct append** | **128.3** | **84** | **0** |
+
+**1.7x faster with zero allocations.** `encoding/csv` cannot reach this: its
+`Write` takes `[]string`, so every numeric cell must be materialized as a
+string first. That is a structural cost of the API, not an implementation flaw.
+
+A third-party CSV library would not have helped either. Measured per value:
 
 | Operation | ns | allocs |
 |---|---:|---:|
@@ -90,8 +104,23 @@ number formatting, which no CSV encoder can change. Note also that fixed
 precision is **slower** than shortest-round-trip, so trading digits for speed
 does not work.
 
-Quoting is hand-rolled against RFC 4180 and covered by `TestCSVQuoting`
-(commas, quotes, newlines, CR, leading/trailing whitespace, empty).
+**Is a hand-rolled encoder worth maintaining?** Only because the correctness
+risk is retired rather than accepted. The quoting rules mirror
+`encoding/csv.fieldNeedsQuotes` exactly — including the `\.` Postgres
+end-of-data case and the leading-space rule using `unicode.IsSpace` — so this
+writer is byte-for-byte substitutable, and `FuzzCSVMatchesStdlib` asserts that
+against the standard library on arbitrary input.
+
+A 2-minute run covered **3,049,395 executions with zero mismatches** (52 new
+interesting inputs, all matching). The oracle is stdlib itself, so the usual
+objection to a hand-rolled encoder — that you now own a pile of edge cases —
+does not apply: any divergence fails the test loudly, including one introduced
+by a future Go release.
+
+Two conditions come with that verdict: run the fuzz target in CI with a time
+budget, and keep the semantics locked to stdlib rather than "improving" them.
+`TestCSVQuoting` documents the rules readably; the fuzz target is the
+authority.
 
 The v1 runtime-overhead figure comes from a scratch harness built with a
 different Go toolchain, so treat it as indicative; the head-to-head table above

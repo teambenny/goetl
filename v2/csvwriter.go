@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
@@ -185,13 +187,19 @@ func appendCSVString(dst []byte, s string) []byte {
 	return append(dst, '"')
 }
 
-// csvNeedsQuote reports whether s must be quoted: it contains a delimiter,
-// quote, or newline, or has leading/trailing space.
+// csvNeedsQuote reports whether s must be quoted.
+//
+// These rules mirror encoding/csv's fieldNeedsQuotes exactly, including the
+// `\.` case (Postgres treats a bare \. as end-of-data) and the leading-space
+// rule using unicode.IsSpace rather than an ASCII check. Matching stdlib byte
+// for byte is deliberate: it means this writer is a drop-in substitute, and it
+// lets FuzzCSVMatchesStdlib assert equality on arbitrary input instead of
+// merely asserting that the output looks reasonable.
 func csvNeedsQuote(s string) bool {
 	if s == "" {
 		return false
 	}
-	if s[0] == ' ' || s[0] == '\t' || s[len(s)-1] == ' ' || s[len(s)-1] == '\t' {
+	if s == `\.` {
 		return true
 	}
 	for i := 0; i < len(s); i++ {
@@ -200,5 +208,6 @@ func csvNeedsQuote(s string) bool {
 			return true
 		}
 	}
-	return false
+	r, _ := utf8.DecodeRuneInString(s)
+	return unicode.IsSpace(r)
 }
