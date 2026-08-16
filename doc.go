@@ -11,16 +11,16 @@ concurrently.
 
 Here is a conceptual drawing of a fairly simple Pipeline:
 
-        +--Pipeline------------------------------------------------------------------------------------------+
-        |                                                                       PipelineStage 3              |
-        |                                                                      +---------------------------+ |
-        |  PipelineStage 1                 PipelineStage 2          +-JSON---> |  CSVWriter                | |
-        | +------------------+           +-----------------------+  |          +---------------------------+ |
-        | |  SQLReader       +-JSON----> | Custom Processor      +--+                                        |
-        | +------------------+           +-----------------------+  |          +---------------------------+ |
-        |                                                           +-JSON---> |  SQLWriter                | |
-        |                                                                      +---------------------------+ |
-        +----------------------------------------------------------------------------------------------------+
+	+--Pipeline------------------------------------------------------------------------------------------+
+	|                                                                       PipelineStage 3              |
+	|                                                                      +---------------------------+ |
+	|  PipelineStage 1                 PipelineStage 2          +-JSON---> |  CSVWriter                | |
+	| +------------------+           +-----------------------+  |          +---------------------------+ |
+	| |  SQLReader       +-JSON----> | Custom Processor      +--+                                        |
+	| +------------------+           +-----------------------+  |          +---------------------------+ |
+	|                                                           +-JSON---> |  SQLWriter                | |
+	|                                                                      +---------------------------+ |
+	+----------------------------------------------------------------------------------------------------+
 
 In this example, we have a Pipeline consisting of 3 PipelineStages. The first stage has a Processor that
 runs queries on a SQL database, the second is doing custom transformation
@@ -51,51 +51,51 @@ pipelines (http://blog.golang.org/pipelines). While the details discussed in tha
 blog post are largely abstracted away by goetl, it is still an interesting read and
 will help explain the general concepts being applied.
 
-Creating and Running a Basic Pipeline
+# Creating and Running a Basic Pipeline
 
 There are two ways to construct and run a Pipeline. The first is a basic, non-branching
 Pipeline. For example:
 
-        +------------+   +-------------------+   +---------------+
-        | SQLReader  +---> CustomTransformer +---> SQLWriter     |
-        +------------+   +-------------------+   +---------------+
+	+------------+   +-------------------+   +---------------+
+	| SQLReader  +---> CustomTransformer +---> SQLWriter     |
+	+------------+   +-------------------+   +---------------+
 
 This is a 3-stage Pipeline that queries some SQL data in stage 1, does some custom data
 transformation in stage 2, and then writes the resulting data to a SQL table in stage 3.
 The code to create and run this basic Pipeline would look something like:
 
-        // First initalize the Processors
-        read := processors.NewSQLReader(db1, "SELECT * FROM source_table")
-        transform := NewCustomTransformer() // (This would your own custom Processor implementation)
-        write := processors.NewSQLWriter(db2, "destination_table")
+	// First initalize the Processors
+	read := processors.NewSQLReader(db1, "SELECT * FROM source_table")
+	transform := NewCustomTransformer() // (This would your own custom Processor implementation)
+	write := processors.NewSQLWriter(db2, "destination_table")
 
-        // Then create a new Pipeline using them
-        pipeline := goetl.NewPipeline(read, transform, write)
+	// Then create a new Pipeline using them
+	pipeline := goetl.NewPipeline(read, transform, write)
 
-        // Finally, run the Pipeline and wait for either an error or nil to be returned
-        err := <-pipeline.Run()
+	// Finally, run the Pipeline and wait for either an error or nil to be returned
+	err := <-pipeline.Run()
 
-Creating and Running a Branching Pipeline
+# Creating and Running a Branching Pipeline
 
 The second way to construct a Pipeline is using a PipelineLayout. This method allows
 for more complex Pipeline configurations that support branching between stages that
 are running multiple DataProcessors. Here is a (fairly complex) example:
 
-                                                                   +----------------------+
-                                                            +------> SQLReader (Dynamic)  +--+
-                                                            |      +----------------------+  |
-                                                            |                                |
-                         +---------------------------+      |      +----------------------+  |    +-----------+
-                   +-----> SQLReader (Dynamic Query) +------+   +--> Custom Processor     +-------> CSVWriter |
-    +-----------+  |     +---------------------------+      |   |  +----------------------+  |    +-----------+
-    | SQLReader +--+                                     +------+                            |
-    +-----------+  |     +---------------------------+   |  |      +----------------------+  |    +-----------+
-                   +-----> Custom Processor          +------+------> Custom Processor     +--+  +-> SQLWriter |
-                         +---------------------------+   |         +----------------------+     | +-----------+
-                                                         |                                      |
-                                                         |         +----------------------+     |
-                                                         +---------> Passthrough          +-----+
-                                                                   +----------------------+
+	                                                               +----------------------+
+	                                                        +------> SQLReader (Dynamic)  +--+
+	                                                        |      +----------------------+  |
+	                                                        |                                |
+	                     +---------------------------+      |      +----------------------+  |    +-----------+
+	               +-----> SQLReader (Dynamic Query) +------+   +--> Custom Processor     +-------> CSVWriter |
+	+-----------+  |     +---------------------------+      |   |  +----------------------+  |    +-----------+
+	| SQLReader +--+                                     +------+                            |
+	+-----------+  |     +---------------------------+   |  |      +----------------------+  |    +-----------+
+	               +-----> Custom Processor          +------+------> Custom Processor     +--+  +-> SQLWriter |
+	                     +---------------------------+   |         +----------------------+     | +-----------+
+	                                                     |                                      |
+	                                                     |         +----------------------+     |
+	                                                     +---------> Passthrough          +-----+
+	                                                               +----------------------+
 
 This Pipeline consists of 4 stages where each Processor is choosing which Processors
 in the subsequent stage should receive the data it sends. The SQLReader in stage 2, for example,
@@ -103,51 +103,50 @@ is sending data to only 2 processors in the next stage, while the Custom Process
 stage 2 is sending its data to 3. The code for constructing and running a Pipeline like this
 would look like:
 
-        // First, initialize all the DataProcessors that will be used in the Pipeline
-        query1 := processors.NewSQLReader(db1, "SELECT * FROM source_table")
-        query2 := processors.NewSQLReader(db1, sqlGenerator1) // sqlGenerator1 would be a function that generates the query at run-time. See SQLReader docs.
-        custom1 := NewCustomProcessor1()
-        query3 := processors.NewSQLReader(db2, sqlGenerator2)
-        custom2 := NewCustomProcessor2()
-        custom3 := NewCustomProcessor3()
-        passthrough := processors.NewPassthrough()
-        writeMySQL := processors.NewSQLWriter(db3, "destination_table")
-        writeCSV := processors.NewCSVWriter(file)
+	// First, initialize all the DataProcessors that will be used in the Pipeline
+	query1 := processors.NewSQLReader(db1, "SELECT * FROM source_table")
+	query2 := processors.NewSQLReader(db1, sqlGenerator1) // sqlGenerator1 would be a function that generates the query at run-time. See SQLReader docs.
+	custom1 := NewCustomProcessor1()
+	query3 := processors.NewSQLReader(db2, sqlGenerator2)
+	custom2 := NewCustomProcessor2()
+	custom3 := NewCustomProcessor3()
+	passthrough := processors.NewPassthrough()
+	writeMySQL := processors.NewSQLWriter(db3, "destination_table")
+	writeCSV := processors.NewCSVWriter(file)
 
-        // Next, construct and validate the PipelineLayout. Each DataProcessor
-        // is inserted into the layout via calls to goetl.Do().
-        layout, err := goetl.NewPipelineLayout(
-                goetl.NewPipelineStage(
-                        goetl.Do(query1).Outputs(query2),
-                        goetl.Do(query1).Outputs(custom1),
-                ),
-                goetl.NewPipelineStage(
-                        goetl.Do(query2).Outputs(query3, custom3),
-                        goetl.Do(custom1).Outputs(custom2, custom3, passthrough),
-                ),
-                goetl.NewPipelineStage(
-                        goetl.Do(query3).Outputs(writeCSV),
-                        goetl.Do(custom2).Outputs(writeCSV),
-                        goetl.Do(custom3).Outputs(writeCSV),
-                        goetl.Do(passthrough).Outputs(writeMySQL),
-                ),
-                goetl.NewPipelineStage(
-                        goetl.Do(writeCSV),
-                        goetl.Do(writeMySQL),
-                ),
-        )
-        if err != nil {
-                // layout is invalid
-                panic(err.Error())
-        }
+	// Next, construct and validate the PipelineLayout. Each DataProcessor
+	// is inserted into the layout via calls to goetl.Do().
+	layout, err := goetl.NewPipelineLayout(
+	        goetl.NewPipelineStage(
+	                goetl.Do(query1).Outputs(query2),
+	                goetl.Do(query1).Outputs(custom1),
+	        ),
+	        goetl.NewPipelineStage(
+	                goetl.Do(query2).Outputs(query3, custom3),
+	                goetl.Do(custom1).Outputs(custom2, custom3, passthrough),
+	        ),
+	        goetl.NewPipelineStage(
+	                goetl.Do(query3).Outputs(writeCSV),
+	                goetl.Do(custom2).Outputs(writeCSV),
+	                goetl.Do(custom3).Outputs(writeCSV),
+	                goetl.Do(passthrough).Outputs(writeMySQL),
+	        ),
+	        goetl.NewPipelineStage(
+	                goetl.Do(writeCSV),
+	                goetl.Do(writeMySQL),
+	        ),
+	)
+	if err != nil {
+	        // layout is invalid
+	        panic(err.Error())
+	}
 
-        // Finally, create and run the Pipeline
-        pipeline := goetl.NewBranchingPipeline(layout)
-        err = <-pipeline.Run()
+	// Finally, create and run the Pipeline
+	pipeline := goetl.NewBranchingPipeline(layout)
+	err = <-pipeline.Run()
 
 This example is only conceptual, the main points being to explain the flexibility
 you have when designing your Pipeline's layout and to demonstrate the syntax for
 constructing a new PipelineLayout.
-
 */
 package goetl

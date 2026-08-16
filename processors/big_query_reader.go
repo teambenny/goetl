@@ -21,7 +21,6 @@ import (
 // This involves using a temporary table setting and a couple of other special
 // query settings - read the BigQuery docs related to flatten and repeated
 // fields for more info.
-//
 type BigQueryReader struct {
 	client           *bigquery.Client
 	config           *BigQueryConfig

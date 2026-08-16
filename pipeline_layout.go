@@ -14,10 +14,10 @@ type PipelineLayout struct {
 //
 // This function will return an error if the given layout is invalid.
 // A valid layout meets these conditions:
-// 	1) Processors in the final PipelineStage must NOT have outputs set.
-// 	2) Processors in a non-final stage MUST have outputs set.
-// 	3) Outputs must point to a Processor in the next immediate stage.
-// 	4) A Processor must be pointed to by one of the previous Outputs (unless it is in the first PipelineStage).
+//  1. Processors in the final PipelineStage must NOT have outputs set.
+//  2. Processors in a non-final stage MUST have outputs set.
+//  3. Outputs must point to a Processor in the next immediate stage.
+//  4. A Processor must be pointed to by one of the previous Outputs (unless it is in the first PipelineStage).
 func NewPipelineLayout(stages ...*PipelineStage) (*PipelineLayout, error) {
 	l := &PipelineLayout{stages}
 	if err := l.validate(); err != nil {

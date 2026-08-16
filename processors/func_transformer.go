@@ -13,7 +13,7 @@ type FuncTransformer struct {
 	ConcurrencyLevel int    // See ConcurrentProcessor
 }
 
-//NewFuncTransformer instantiates a new instance of func transformer
+// NewFuncTransformer instantiates a new instance of func transformer
 func NewFuncTransformer(transform func(d etldata.Payload) etldata.Payload) *FuncTransformer {
 	return &FuncTransformer{transform: transform}
 }

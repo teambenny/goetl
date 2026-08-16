@@ -105,11 +105,43 @@ pipeline over a numeric-only source is correct
 (`TestNumericOnlyViewIsCorrect`), which isolates it. That is worth adding to
 the issue.
 
-**This does not invalidate the architecture** — the Arrow core is independent of
-DuckDB, and question 1 confirms the C Data Interface itself works. But shipping
-DuckDB as the SQL layer is blocked until #24 is fixed, worked around
-(dictionary-encode strings to int32 across the boundary), or replaced (ADBC, or
-DuckDB's non-Arrow API via `database/sql`, which is correct but not zero-copy).
+### Is there a reliable path? Yes, and it costs 1.8x
+
+The defect is query-shape and schema dependent, and it is not confined to the
+Arrow result path:
+
+| Path | Result |
+|---|---|
+| Arrow view → Arrow results, numeric-only schema | correct |
+| Arrow view → Arrow results, varchar in schema | corrupt |
+| Arrow view → `database/sql`, `GROUP BY` | correct |
+| Arrow view → `database/sql`, **direct aggregation** | **corrupt** |
+| **Materialize to a table first, then anything** | **correct** |
+
+Direct aggregation straight off an Arrow view is wrong on *both* result paths,
+which is exactly what upstream #24 reports. Materializing the view into a table
+on the same connection is correct in every shape tested.
+
+`BenchmarkMaterializePerBatch` measures that route end to end:
+
+| Route | ns/row | Sound? |
+|---|---:|---|
+| Query the Arrow view directly | 247.7 | only for numeric-only schemas |
+| Materialize, then query | 455.5 | yes |
+
+So the safe route costs **1.8x** the unsafe one — and is still ~24x faster than
+v1's framework overhead alone. The materialization copy is the real cost of the
+bug, not correctness.
+
+**This does not invalidate the architecture.** The Arrow core is independent of
+DuckDB (62 ns/row, pure Go, no cgo). What weakens is the specific claim of
+"zero serialization anywhere": until #24 is fixed, the SQL boundary costs one
+copy of the input. Zero-copy registration is confirmed working and becomes an
+optimization to switch on later, not a foundation to build on now.
+
+For production the `Appender` API is likely a better ingest route than
+`CREATE TABLE AS SELECT` — it is go-duckdb's native bulk path and far more
+exercised than the Arrow C Data Interface binding. Not benchmarked here.
 
 ## Design notes
 

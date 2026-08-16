@@ -10,13 +10,13 @@ type PipelineStage struct {
 // the Processor interface. The syntax used to create PipelineLayouts
 // abstracts this type away from your implementing code. For example:
 //
-//     layout, err := goetl.NewPipelineLayout(
-//             goetl.NewPipelineStage(
-//                      goetl.Do(aProcessor).Outputs(anotherProcessor),
-//                      // ...
-//             ),
-//             // ...
-//     )
+//	layout, err := goetl.NewPipelineLayout(
+//	        goetl.NewPipelineStage(
+//	                 goetl.Do(aProcessor).Outputs(anotherProcessor),
+//	                 // ...
+//	        ),
+//	        // ...
+//	)
 //
 // Notice how the goetl.Do() and Outputs() functions allow you to insert
 // Processor instances into your PipelineStages without having to
