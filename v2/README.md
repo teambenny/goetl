@@ -22,27 +22,38 @@ produce the same values, so the comparison is not measuring different work.
 
 | Configuration | ns/row | B/row | allocs/row |
 |---|---:|---:|---:|
-| v1, 1 row per payload | 7,510 | 2,269 | 56 |
-| v1, 4096 rows per payload (v1's best case) | 2,232 | 1,262 | 22 |
-| **v2, 4096 rows per batch** | **307** | **174** | **3** |
+| v1, 1 row per payload | 6,971 | 2,269 | 56 |
+| v1, 4096 rows per payload (v1's best case) | 2,142 | 1,264 | 22 |
+| **v2, 4096 rows per batch** | **165** | **85** | **0** |
 
-**7.3x faster than v1 at its best, 24x at one row per payload**, with 7x fewer
-allocations. Three runs each, spread under 3%.
+**13x faster than v1 at its best, 42x at one row per payload**, with zero
+allocations per row against v1's 22. Three runs each, spread under 3%.
 
 The per-payload row matters because many v1 sources are inherently
 per-record — `IoReader` line-by-line, `FileReader`, `S3Reader`. Getting v1's
 best case requires the source to batch.
 
-### Why this is 7x and not the 78x below
+### Why this is 13x and not the 78x below
 
 The micro-benchmarks isolate *framework overhead*, and there v2 really is ~78x
 better. But an end-to-end job also does work neither version can avoid, and
-that work now dominates: of v2's 307 ns/row, roughly 245 ns is CSV encoding.
-Once the framework stops being the bottleneck, the format does.
+that work now dominates. Of v2's 165 ns/row, about 101 ns is CSV encoding and
+only 64 ns is the runtime plus the transform.
 
-So **78x is the honest number for what the runtime costs, and 7x is the honest
-number for what a pipeline costs.** Quote the second one. Jobs whose sink is
-cheaper than CSV, or that fan out to several stages, will land higher.
+So **78x is the honest number for what the runtime costs, and 13x is the honest
+number for what a pipeline costs.** Quote the second one.
+
+Where the remaining 165 ns/row goes:
+
+| Component | ns/row | Avoidable? |
+|---|---:|---|
+| Runtime + columnar transform | 64 | already near floor |
+| Float formatting, 1 column | ~68 | only by not emitting text |
+| Integer formatting, 2 columns | ~29 | no |
+| Framing, separators, string column | ~14 | no |
+
+**Float-to-decimal conversion is now the single largest line item**, at roughly
+41% of total time. It is a hard floor for any text format.
 
 ### Component micro-benchmarks
 
@@ -50,11 +61,37 @@ cheaper than CSV, or that fan out to several stages, will land higher.
 |---|---:|---:|---:|
 | Runtime overhead (source → passthrough → sink) | 4,835 | **62.1** | **78x** |
 | Row-wise transform (Tier 2) | — | 82.1 | — |
-| Transform + CSV encode to a sink | — | 304.5 | — |
+| Transform + CSV encode to a sink | — | 173.0 | — |
 | DuckDB SQL aggregation in-pipeline | — | 241.8 | — |
 
-Allocations per row: **0** for the first two. v1 did 14 allocs/payload for the
+Allocations per row: **0** across all of them. v1 did 14 allocs/payload for the
 equivalent passthrough.
+
+### The CSV encoder
+
+The first implementation formatted each column into a `[]string` and handed
+rows to `encoding/csv`. Rewriting it to append directly into a reusable byte
+buffer took CSV encoding from 242 to 101 ns/row (**2.2x**) and 3 allocations
+per row to 0, which is what moved the end-to-end figure from 7.3x to 13x.
+
+A third-party CSV library would not have helped. Measured per value:
+
+| Operation | ns | allocs |
+|---|---:|---:|
+| `strconv.FormatFloat` shortest, allocating | 91.1 | 1 |
+| `strconv.AppendFloat` shortest, into buffer | 68.1 | 0 |
+| `strconv.AppendFloat` fixed `'f',2` | 138.5 | 0 |
+| `strconv.AppendInt` | 14.4 | 0 |
+| `encoding/csv` framing, 4 fields | 65.8/row | 0 |
+| direct append framing, 4 fields | 14.2/row | 0 |
+
+The CSV *framing* was only 66 ns/row and hand-rolling it saves 52. The rest is
+number formatting, which no CSV encoder can change. Note also that fixed
+precision is **slower** than shortest-round-trip, so trading digits for speed
+does not work.
+
+Quoting is hand-rolled against RFC 4180 and covered by `TestCSVQuoting`
+(commas, quotes, newlines, CR, leading/trailing whitespace, empty).
 
 The v1 runtime-overhead figure comes from a scratch harness built with a
 different Go toolchain, so treat it as indicative; the head-to-head table above
