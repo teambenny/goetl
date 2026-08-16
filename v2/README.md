@@ -10,23 +10,55 @@ directory.
 ## Results
 
 Intel Xeon @ 2.80GHz, 4 cores, Go 1.25.13, Arrow v18.7.0, duckdb-go v2.10505.0.
+`b.N` is the **row** count everywhere, so `ns/op` reads as **ns per row**.
 
-`b.N` is the **row** count in every benchmark, so `ns/op` reads as
-**nanoseconds per row** and is directly comparable to the v1 baseline.
+### End-to-end, head to head
+
+The number that matters. `../benchcmp` imports both versions into one module
+and runs them in one test binary: same machine, same toolchain, same process.
+The job is identical — generate rows, apply a region-dependent markup, write
+CSV to a discarding writer — and `TestSameOutput` asserts both pipelines
+produce the same values, so the comparison is not measuring different work.
+
+| Configuration | ns/row | B/row | allocs/row |
+|---|---:|---:|---:|
+| v1, 1 row per payload | 7,510 | 2,269 | 56 |
+| v1, 4096 rows per payload (v1's best case) | 2,232 | 1,262 | 22 |
+| **v2, 4096 rows per batch** | **307** | **174** | **3** |
+
+**7.3x faster than v1 at its best, 24x at one row per payload**, with 7x fewer
+allocations. Three runs each, spread under 3%.
+
+The per-payload row matters because many v1 sources are inherently
+per-record — `IoReader` line-by-line, `FileReader`, `S3Reader`. Getting v1's
+best case requires the source to batch.
+
+### Why this is 7x and not the 78x below
+
+The micro-benchmarks isolate *framework overhead*, and there v2 really is ~78x
+better. But an end-to-end job also does work neither version can avoid, and
+that work now dominates: of v2's 307 ns/row, roughly 245 ns is CSV encoding.
+Once the framework stops being the bottleneck, the format does.
+
+So **78x is the honest number for what the runtime costs, and 7x is the honest
+number for what a pipeline costs.** Quote the second one. Jobs whose sink is
+cheaper than CSV, or that fan out to several stages, will land higher.
+
+### Component micro-benchmarks
 
 | Stage | v1 (ns/row) | v2 (ns/row) | Speedup |
 |---|---:|---:|---:|
 | Runtime overhead (source → passthrough → sink) | 4,835 | **62.1** | **78x** |
-| Realistic transform + runtime | 10,947 | **62.2** | **176x** |
 | Row-wise transform (Tier 2) | — | 82.1 | — |
 | Transform + CSV encode to a sink | — | 304.5 | — |
 | DuckDB SQL aggregation in-pipeline | — | 241.8 | — |
 
-Allocations per row: **0** for the first three. v1 did 14 allocs/payload for the
-equivalent passthrough and 40 for the JSON transform.
+Allocations per row: **0** for the first two. v1 did 14 allocs/payload for the
+equivalent passthrough.
 
-v1 numbers come from the harness in the analysis for this branch: a 3-stage
-pipeline over `etldata.JSON`, measured on the same machine.
+The v1 runtime-overhead figure comes from a scratch harness built with a
+different Go toolchain, so treat it as indicative; the head-to-head table above
+has no such confound and is the one to rely on.
 
 ### The tier gap is smaller than expected
 
