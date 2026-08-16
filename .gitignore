@@ -1,2 +1,4 @@
 .DS_Store
 vendor/.DS_Store
+# scratch
+tmpprobe*/
