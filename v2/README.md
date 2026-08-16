@@ -275,6 +275,67 @@ not by this code; DuckDB wants its `Appender` API for bulk load. v1's writers
 were never benchmarked against a database either, so there is no baseline to
 compare against. The generation and marshalling path is what was measured here.
 
+## Custom processors
+
+The extension point is unchanged in spirit from v1: implement an interface,
+write ordinary Go. Nothing built in is privileged — `SQLWriter`, `CSVWriter`
+and `duckdbx.Transform` are just implementations of the same two interfaces.
+
+```go
+type Source interface {
+    Read(ctx context.Context, emit Emit) error
+}
+
+type Processor interface {
+    Process(ctx context.Context, b *Batch, emit Emit) error
+    Flush(ctx context.Context, emit Emit) error
+}
+```
+
+`example_custom_test.go` lives in an external test package, so it exercises the
+exported API only, and covers the four shapes that matter:
+
+| Shape | Example |
+|---|---|
+| Stateful aggregation across batches, emitting from `Flush` | `RegionTotals` |
+| Filtering rows | `ExampleNewFilter` |
+| Adding a column | `Enricher` |
+| External I/O enrichment — the case SQL cannot do | `Enricher` |
+| A custom source | `CountSource` |
+
+Compared with v1 the interface gained `context` and an `error` return, and lost
+the kill channel. `Flush` replaces `Finish` and is guaranteed to run exactly
+once per stage. Embedding `goetl.NopFlush` covers stateless processors.
+
+**Two helpers exist because of ergonomics, not performance.** Arrow arrays are
+fixed length, so dropping rows means rebuilding a batch — written by hand that
+is a ~45-line type switch over every column type in every filtering processor.
+`goetl.Filter` and `goetl.AppendColumn` absorb that, so a filter is just its
+predicate:
+
+```go
+recent := goetl.NewFilter("recent", func(b *goetl.Batch) ([]bool, error) {
+    year, err := goetl.Column[int64](b, "year")
+    if err != nil {
+        return nil, err
+    }
+    keep := make([]bool, len(year))
+    for i, y := range year {
+        keep[i] = y >= 2024
+    }
+    return keep, nil
+})
+```
+
+`Filter` retains and returns the input unchanged when nothing is dropped, so a
+predicate that matches everything costs no copy. `TestFilterNoLeak` runs it over
+100k rows under a checked Arrow allocator and asserts the allocator drains to
+zero.
+
+This is the area that still needs the most design work before the API is worth
+publishing: sorting, joining, grouping and column projection would each
+otherwise push the same boilerplate onto users.
+
 ## Design notes
 
 **Batch** wraps `arrow.Record`. `Column[T]` returns a Go slice aliasing the

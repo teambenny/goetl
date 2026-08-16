@@ -218,3 +218,31 @@ func BenchmarkTier1PlusCSV(b *testing.B) {
 type discardWriter struct{}
 
 func (discardWriter) Write(p []byte) (int, error) { return len(p), nil }
+
+// Filter builds new batches, so it must not leak Arrow buffers. A checked
+// allocator fails the test if anything is left unreleased.
+func TestFilterNoLeak(t *testing.T) {
+	alloc := memory.NewCheckedAllocator(memory.NewGoAllocator())
+	half := goetl.NewFilter("half", func(b *goetl.Batch) ([]bool, error) {
+		id, err := goetl.Column[int64](b, "id")
+		if err != nil {
+			return nil, err
+		}
+		keep := make([]bool, len(id))
+		for i := range id {
+			keep[i] = id[i]%2 == 0
+		}
+		return keep, nil
+	})
+	half.Alloc = alloc
+
+	sink := &goetl.Discard{}
+	p := goetl.New(&goetl.GenSource{Rows: 100000, PerBatch: 1024, Alloc: alloc}, half, sink)
+	if err := p.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if sink.Rows != 50000 {
+		t.Fatalf("kept %d rows, want 50000", sink.Rows)
+	}
+	alloc.AssertSize(t, 0)
+}

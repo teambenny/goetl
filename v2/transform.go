@@ -2,10 +2,6 @@ package goetl
 
 import (
 	"context"
-
-	"github.com/apache/arrow-go/v18/arrow"
-	"github.com/apache/arrow-go/v18/arrow/array"
-	"github.com/apache/arrow-go/v18/arrow/memory"
 )
 
 // ColumnFunc transforms a batch by operating on whole columns. This is the fast
@@ -134,25 +130,3 @@ func (d *Discard) Process(ctx context.Context, b *Batch, emit Emit) error {
 }
 
 func (d *Discard) String() string { return "Discard" }
-
-// AppendFloat64Column adds a float64 column to a batch, returning a new Batch
-// that shares the existing columns and owns the new one. The original batch is
-// unchanged and its columns are retained, not copied.
-func AppendFloat64Column(b *Batch, name string, vals []float64, alloc memory.Allocator) *Batch {
-	if alloc == nil {
-		alloc = memory.DefaultAllocator
-	}
-	bldr := array.NewFloat64Builder(alloc)
-	defer bldr.Release()
-	bldr.AppendValues(vals, nil)
-	arr := bldr.NewArray()
-	defer arr.Release()
-
-	old := b.Record()
-	fields := append(append([]arrow.Field{}, old.Schema().Fields()...),
-		arrow.Field{Name: name, Type: arrow.PrimitiveTypes.Float64})
-	cols := append(append([]arrow.Array{}, old.Columns()...), arr)
-
-	rec := array.NewRecord(arrow.NewSchema(fields, nil), cols, old.NumRows())
-	return NewBatch(rec)
-}
