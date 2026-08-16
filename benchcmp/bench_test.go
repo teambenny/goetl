@@ -285,3 +285,32 @@ func splitFields(line string) []string {
 	}
 	return append(out, string(cur))
 }
+
+// runV2Structs uses v2's struct-binding transform: the same ergonomics as the
+// v1 pipeline above, which parses JSON into []row, mutates, and re-marshals.
+// This isolates the runtime/format difference from the API difference.
+func runV2Structs(b *testing.B, rows int) {
+	transform := v2.NewStructTransform("markup", func(rs []v2row) ([]v2row, error) {
+		for i := range rs {
+			rs[i].Amount *= markup(rs[i].Region)
+		}
+		return rs, nil
+	})
+	p := v2.New(&v2.GenSource{Rows: rows, PerBatch: perBatch}, transform, v2.NewCSVWriter(discard{}))
+	if err := p.Run(context.Background()); err != nil {
+		b.Fatal(err)
+	}
+}
+
+type v2row struct {
+	ID     int64   `goetl:"id"`
+	Region string  `goetl:"region"`
+	Year   int64   `goetl:"year"`
+	Amount float64 `goetl:"amount"`
+}
+
+// v2 with the struct API: apples-to-apples with v1 on developer experience.
+func BenchmarkV2_StructAPI(b *testing.B) {
+	b.ReportAllocs()
+	runV2Structs(b, b.N)
+}

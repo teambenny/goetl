@@ -307,7 +307,55 @@ Compared with v1 the interface gained `context` and an `error` return, and lost
 the kill channel. `Flush` replaces `Finish` and is guaranteed to run exactly
 once per stage. Embedding `goetl.NopFlush` covers stateless processors.
 
-**Two helpers exist because of ergonomics, not performance.** Arrow arrays are
+### The friendly path
+
+The columnar API demands you know each column's name and type at every access,
+handle an error per lookup, and use Arrow builders to change a schema. v1 let
+you write `d.Parse(&rows)` and work in ordinary Go structs, which is a large
+part of why it was pleasant. `NewStructTransform` restores that:
+
+```go
+markup := goetl.NewStructTransform("markup", func(rows []Sale) ([]Sale, error) {
+    var out []Sale
+    for _, r := range rows {
+        if r.Year < 2024 {
+            continue // filtering is just not appending
+        }
+        r.Amount *= 1.08
+        out = append(out, r)
+    }
+    return out, nil
+})
+```
+
+No column names at call sites, no per-access errors, no builders, and
+filtering falls out for free. Columns bind to fields by `goetl:"..."` tag or
+field name.
+
+**At identical ergonomics, v2 is 6.4x faster than v1.** Both sides of this
+comparison decode into a `[]struct`, mutate, and re-encode — the only
+difference is the runtime and the wire format:
+
+| Configuration | ns/row | allocs/row |
+|---|---:|---:|
+| v1, struct API (JSON payloads) | 2,202 | 22 |
+| **v2, struct API (Arrow batches)** | **346** | **3** |
+| v2, columnar API | 319 | 3 |
+
+The striking part is the last two rows. In isolation the struct path costs
+2.9x the columnar path (205 vs 70 ns/row), but **in a full CSV-writing
+pipeline it costs 6%** — because the sink dominates everything upstream.
+
+So the friendly path is not a compromise for most pipelines. Write structs,
+get v1's developer experience and 6.4x its throughput; drop to `Column[T]`
+only where a profile says a stage matters.
+
+Remaining gaps, honestly: struct binding is reflection-based so column names
+are still unchecked strings; nullable fields are unsupported (no pointer
+fields); the type coverage is int64/float64/string/bool only; and sorting,
+joining and grouping have no helpers yet.
+
+**Two more helpers exist because of ergonomics, not performance.** Arrow arrays are
 fixed length, so dropping rows means rebuilding a batch — written by hand that
 is a ~45-line type switch over every column type in every filtering processor.
 `goetl.Filter` and `goetl.AppendColumn` absorb that, so a filter is just its

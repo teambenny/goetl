@@ -246,3 +246,26 @@ func TestFilterNoLeak(t *testing.T) {
 	}
 	alloc.AssertSize(t, 0)
 }
+
+// The friendly path costs what it costs. Same job as BenchmarkTier1Column,
+// expressed in Go structs instead of columns.
+func BenchmarkTier0Struct(b *testing.B) {
+	t := goetl.NewStructTransform("markup", func(rows []benchSale) ([]benchSale, error) {
+		for i := range rows {
+			rate := 1.08
+			if rows[i].Region == "west" {
+				rate = 1.095
+			}
+			rows[i].Amount *= rate
+		}
+		return rows, nil
+	})
+	benchRows(b, t, &goetl.Discard{})
+}
+
+type benchSale struct {
+	ID     int64   `goetl:"id"`
+	Region string  `goetl:"region"`
+	Year   int64   `goetl:"year"`
+	Amount float64 `goetl:"amount"`
+}
