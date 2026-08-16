@@ -23,37 +23,29 @@ produce the same values, so the comparison is not measuring different work.
 | Configuration | ns/row | B/row | allocs/row |
 |---|---:|---:|---:|
 | v1, 1 row per payload | 6,971 | 2,269 | 56 |
-| v1, 4096 rows per payload (v1's best case) | 2,142 | 1,264 | 22 |
-| **v2, 4096 rows per batch** | **165** | **85** | **0** |
+| v1, 4096 rows per payload (v1's best case) | 1,883 | 1,265 | 22 |
+| **v2, 4096 rows per batch** | **258** | **110** | **3** |
 
-**13x faster than v1 at its best, 42x at one row per payload**, with zero
-allocations per row against v1's 22. Three runs each, spread under 3%.
+**7.3x faster than v1 at its best, 27x at one row per payload.** Three runs
+each, spread under 3%.
 
 The per-payload row matters because many v1 sources are inherently
 per-record — `IoReader` line-by-line, `FileReader`, `S3Reader`. Getting v1's
 best case requires the source to batch.
 
-### Why this is 13x and not the 78x below
+### Why this is 7x and not the 78x below
 
 The micro-benchmarks isolate *framework overhead*, and there v2 really is ~78x
 better. But an end-to-end job also does work neither version can avoid, and
-that work now dominates. Of v2's 165 ns/row, about 101 ns is CSV encoding and
-only 64 ns is the runtime plus the transform.
+that work now dominates. Of v2's 258 ns/row, roughly **200 ns is CSV encoding**
+and only 58 ns is the runtime plus the transform.
 
-So **78x is the honest number for what the runtime costs, and 13x is the honest
-number for what a pipeline costs.** Quote the second one.
+So **78x is the honest number for what the runtime costs, and 7x is the honest
+number for what a CSV-writing pipeline costs.** Quote the second one.
 
-Where the remaining 165 ns/row goes:
-
-| Component | ns/row | Avoidable? |
-|---|---:|---|
-| Runtime + columnar transform | 64 | already near floor |
-| Float formatting, 1 column | ~68 | only by not emitting text |
-| Integer formatting, 2 columns | ~29 | no |
-| Framing, separators, string column | ~14 | no |
-
-**Float-to-decimal conversion is now the single largest line item**, at roughly
-41% of total time. It is a hard floor for any text format.
+**The runtime is no longer the bottleneck — the output format is, by roughly
+3:1.** Further work on the pipeline core buys almost nothing. The next real
+gain comes from a sink that does not convert floats to decimal text at all.
 
 ### Component micro-benchmarks
 
@@ -61,34 +53,37 @@ Where the remaining 165 ns/row goes:
 |---|---:|---:|---:|
 | Runtime overhead (source → passthrough → sink) | 4,835 | **62.1** | **78x** |
 | Row-wise transform (Tier 2) | — | 82.1 | — |
-| Transform + CSV encode to a sink | — | 173.0 | — |
+| Transform + CSV encode to a sink | — | 259.3 | — |
 | DuckDB SQL aggregation in-pipeline | — | 241.8 | — |
 
-Allocations per row: **0** across all of them. v1 did 14 allocs/payload for the
-equivalent passthrough.
+Allocations per row: **0** for the runtime and transform stages; the CSV sink
+adds 3, all of them strings that `encoding/csv` requires.
 
-### The CSV encoder
+### The CSV encoder: a deliberate 1.6x given up
 
-The first implementation formatted each column into a `[]string` and handed
-rows to `encoding/csv`. Rewriting it to append directly into a reusable byte
-buffer took CSV encoding from 242 to 101 ns/row (**2.2x**) and 3 allocations
-per row to 0, which is what moved the end-to-end figure from 7.3x to 13x.
+Encoding is delegated to `encoding/csv`. A hand-rolled encoder that appended
+bytes directly was built, measured, and then **removed on purpose**.
 
-**Versus the standard library.** `BenchmarkCSVStdlib` is a fair
-`encoding/csv` implementation of the same job — column types resolved once per
-batch, record slice reused across rows — benchmarked head to head against the
-direct writer. Source plus sink, no transform, three runs each:
-
-| Encoder | ns/row | B/row | allocs/row |
+| Encoder | pipeline ns/row | allocs/row | vs v1 best |
 |---|---:|---:|---:|
-| `encoding/csv` | 215.6 | 100 | 3 |
-| **direct append** | **128.3** | **84** | **0** |
+| hand-rolled direct append | 165 | 0 | 13x |
+| **`encoding/csv` (current)** | **258** | **3** | **7.3x** |
 
-**1.7x faster with zero allocations.** `encoding/csv` cannot reach this: its
-`Write` takes `[]string`, so every numeric cell must be materialized as a
-string first. That is a structural cost of the API, not an implementation flaw.
+The hand-rolled version was genuinely 1.6x faster end to end and allocation
+free, and it was verified byte-for-byte against the standard library by a fuzz
+target that ran 3,049,395 cases without a mismatch. It was still the wrong
+thing to keep: it meant owning an RFC 4180 implementation whose failure mode is
+silently malformed output, in a library whose entire value proposition is that
+the data arrives correct. A fuzz oracle reduces that risk but does not remove
+the obligation to run it, understand it, and keep it aligned forever.
 
-A third-party CSV library would not have helped either. Measured per value:
+`encoding/csv` cannot be made allocation-free from the outside: `Write` takes
+`[]string`, so every numeric cell must be materialized as a string. That is a
+property of the API, not something a third-party CSV library fixes — they share
+the same shape and the same `strconv` underneath.
+
+**The right place for that 1.6x is a different sink, not a better CSV writer.**
+Measured per value:
 
 | Operation | ns | allocs |
 |---|---:|---:|
@@ -99,28 +94,16 @@ A third-party CSV library would not have helped either. Measured per value:
 | `encoding/csv` framing, 4 fields | 65.8/row | 0 |
 | direct append framing, 4 fields | 14.2/row | 0 |
 
-The CSV *framing* was only 66 ns/row and hand-rolling it saves 52. The rest is
-number formatting, which no CSV encoder can change. Note also that fixed
-precision is **slower** than shortest-round-trip, so trading digits for speed
-does not work.
+Framing was only 66 ns/row. The rest is float-to-decimal conversion, which is
+irreducible for any text format — note that fixed precision measures *slower*
+than shortest-round-trip, so trading digits for speed does not work either.
 
-**Is a hand-rolled encoder worth maintaining?** Only because the correctness
-risk is retired rather than accepted. The quoting rules mirror
-`encoding/csv.fieldNeedsQuotes` exactly — including the `\.` Postgres
-end-of-data case and the leading-space rule using `unicode.IsSpace` — so this
-writer is byte-for-byte substitutable, and `FuzzCSVMatchesStdlib` asserts that
-against the standard library on arbitrary input.
-
-A 2-minute run covered **3,049,395 executions with zero mismatches** (52 new
-interesting inputs, all matching). The oracle is stdlib itself, so the usual
-objection to a hand-rolled encoder — that you now own a pile of edge cases —
-does not apply: any divergence fails the test loudly, including one introduced
-by a future Go release.
-
-Two conditions come with that verdict: run the fuzz target in CI with a time
-budget, and keep the semantics locked to stdlib rather than "improving" them.
-`TestCSVQuoting` documents the rules readably; the fuzz target is the
-authority.
+Parquet or Arrow IPC store a float64 as 8 raw bytes with no conversion at all.
+That removes the entire ~200 ns/row rather than shaving 1.6x off it, and the
+encoder is maintained upstream by `parquet-go` or Arrow itself. Keep
+`encoding/csv` for interchange; reach for a columnar sink when throughput is
+the point. `csvprofile_test.go` retains the measurements above as the evidence
+for that direction.
 
 The v1 runtime-overhead figure comes from a scratch harness built with a
 different Go toolchain, so treat it as indicative; the head-to-head table above
