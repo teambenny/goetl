@@ -9,7 +9,7 @@ directory.
 
 ## Results
 
-Intel Xeon @ 2.80GHz, 4 cores, Go 1.25.13, Arrow v18.7.0, go-duckdb v2.4.3.
+Intel Xeon @ 2.80GHz, 4 cores, Go 1.25.13, Arrow v18.7.0, duckdb-go v2.10505.0.
 
 `b.N` is the **row** count in every benchmark, so `ns/op` reads as
 **nanoseconds per row** and is directly comparable to the v1 baseline.
@@ -71,33 +71,45 @@ link C.
 **4. Does the columnar bet pay off?** Yes — 78x on runtime overhead, with zero
 allocations per row.
 
-## The blocker: go-duckdb v2.4.3 cannot handle VARCHAR from an Arrow view
+## The blocker: Arrow views are unsound for any schema containing strings
 
-This is the significant negative finding and it is worse than a crash.
+This is the significant negative finding, it is worse than a crash, and it is
+**already reported upstream and still open**: [duckdb/duckdb-go#24](https://github.com/duckdb/duckdb-go/issues/24),
+migrated from `marcboeker/go-duckdb#513`.
 
-| Scenario | Result |
-|---|---|
-| Numeric-only view, numeric query | correct, zero-copy |
-| View **contains** a VARCHAR; query never references it | **silently corrupt numbers** |
-| Query reads a VARCHAR from the view | SIGSEGV |
-| String literal not sourced from a view (`SELECT 'x'`) | fine |
+Note also that `marcboeker/go-duckdb` was **archived in October 2025** and moved
+to `github.com/duckdb/duckdb-go`. This module tracks the new path.
 
-The silent-corruption case is the dangerous one. `SELECT SUM(amount) FROM batch`
-over `(id, region, year, amount)` returns a denormal (~1.4e-322) instead of 32,
-with no error and no crash. The identical pipeline over a numeric-only source
-returns 32. Both cases are pinned by tests in `duckdbx/transform_test.go`
-(`TestVarcharInViewCorruptsNumericResults`, `TestNumericOnlyViewIsCorrect`).
+Measured on both duckdb-go v2.4.3 and v2.10505.0 (DuckDB 1.5.5):
 
-The two broken cases are `t.Skip`-ed with the reasoning in their doc comments,
-so unskipping them is the way to check whether a newer go-duckdb fixes it.
+| Case | v2.4.3 | v2.10505.0 |
+|---|---|---|
+| Numeric-only view, numeric query | correct, zero-copy | correct, zero-copy |
+| View **contains** a VARCHAR; query never references it | **corrupt** | **corrupt** |
+| Query reads a VARCHAR from the view | SIGSEGV | **corrupt strings** |
+| `GROUP BY` a VARCHAR from the view | SIGSEGV | **corrupt strings** |
+| String literal not sourced from a view (`SELECT 'x'`) | fine | fine |
+
+**Upgrading makes it more dangerous, not less.** The latest release removes the
+segfault but returns silently corrupt data in its place — group keys come back
+as binary garbage (`map[<garbage>:6]` instead of `map[east:6 west:4]`), and
+`SELECT SUM(amount)` over `(id, region, year, amount)` returns a denormal
+(~1.4e-322) instead of 32 with no error at all. A loud crash is strictly safer
+than a wrong number.
+
+One detail here is not in the upstream issue: **the failure is triggered by the
+mere presence of a VARCHAR column in the view schema**, not by aggregation.
+Upstream #24 attributes it to aggregate queries, and its reproducer happens to
+carry a string column without identifying it as the cause. The identical
+pipeline over a numeric-only source is correct
+(`TestNumericOnlyViewIsCorrect`), which isolates it. That is worth adding to
+the issue.
 
 **This does not invalidate the architecture** — the Arrow core is independent of
 DuckDB, and question 1 confirms the C Data Interface itself works. But shipping
-DuckDB as the SQL layer is blocked until this is resolved upstream, worked
-around (dictionary-encode strings to int32 across the boundary), or replaced
-(ADBC, or DuckDB's non-Arrow API).
-
-It should be reported upstream before any of this is built on.
+DuckDB as the SQL layer is blocked until #24 is fixed, worked around
+(dictionary-encode strings to int32 across the boundary), or replaced (ADBC, or
+DuckDB's non-Arrow API via `database/sql`, which is correct but not zero-copy).
 
 ## Design notes
 
