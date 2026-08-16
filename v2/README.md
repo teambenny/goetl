@@ -143,6 +143,57 @@ For production the `Appender` API is likely a better ingest route than
 `CREATE TABLE AS SELECT` — it is go-duckdb's native bulk path and far more
 exercised than the Arrow C Data Interface binding. Not benchmarked here.
 
+## Connector port: what the migration actually costs
+
+`SQLWriter` (`sqlwriter.go`) ports v1's Postgres and MySQL writers to the
+columnar core, to size the wider connector migration with a real example rather
+than an estimate.
+
+| | v1 | v2 |
+|---|---:|---:|
+| Postgres writer | 78 + 127 | — |
+| MySQL writer | 73 + 129 | — |
+| Shared `sortedColumns` | ~20 | 0 (schema is known) |
+| **Total** | **~427** | **322** |
+
+Both dialects now share one writer with a `Dialect` interface holding only the
+flavor-specific fragments, where v1 had two near-duplicate implementations
+across four files.
+
+**What carried over unchanged**: the SQL shapes. `INSERT ... ON CONFLICT (t) DO
+UPDATE SET c=EXCLUDED.c` and `INSERT ... ON DUPLICATE KEY UPDATE c=VALUES(c)`,
+the batch-splitting behavior, and the default of updating every column on
+conflict. That is the accumulated production knowledge, and it transfers
+verbatim — which is the argument for porting connectors rather than rewriting
+them.
+
+**What disappeared**: v1 unioned the keys of every object in a payload, sorted
+them, and nil-filled rows missing a key, because a `[]map[string]interface{}`
+has no schema. An Arrow batch does, so that entire pass is gone.
+
+**What got fixed on the way**:
+
+- v1 built the INSERT by repeated concatenation in nested loops, quadratic in
+  batch size. Verified linear here: 500 rows 31.3µs, 5000 rows 332.2µs — 10.6x
+  for 10x the rows, at 2 allocations per statement.
+- v1 interpolated column names unquoted, so a column named `order` or `select`
+  produced invalid SQL. Identifiers are now quoted per dialect, with embedded
+  quotes doubled (`TestIdentifierQuotingHandlesReservedWords`).
+- v1 called `db.Prepare` for every batch. Statements are now cached by row
+  count, so a uniform stream prepares twice: once for the full shape, once for
+  the final partial batch.
+
+**Effort**: roughly half a day including tests, for two dialects. Extrapolating
+across v1's 28 processors is not linear — the cloud connectors (S3, SFTP, FTP,
+BigQuery, Redshift) are I/O glue that barely touches the data model and should
+port faster, while `RedshiftWriter`'s S3-manifest logic is the outlier.
+
+**Not a v1-vs-v2 throughput comparison.** `BenchmarkSQLWriter` reports ~11.8µs
+per row, but that is dominated by DuckDB executing single-row-per-tuple INSERTs,
+not by this code; DuckDB wants its `Appender` API for bulk load. v1's writers
+were never benchmarked against a database either, so there is no baseline to
+compare against. The generation and marshalling path is what was measured here.
+
 ## Design notes
 
 **Batch** wraps `arrow.Record`. `Column[T]` returns a Go slice aliasing the
